@@ -42,18 +42,45 @@ foreach ($computer in $ComputerName) {
 
     try {
 
-        # Retrieve operating system information
-        $os = Get-CimInstance `
-            -ClassName Win32_OperatingSystem `
-            -ComputerName $computer `
-            -ErrorAction Stop
+# Determine whether the target is the local computer
+$isLocalComputer = (
+    $computer -ieq $env:COMPUTERNAME -or
+    $computer -ieq "localhost" -or
+    $computer -eq "."
+)
 
-        # Retrieve local fixed disks
-        $disks = Get-CimInstance `
-            -ClassName Win32_LogicalDisk `
-            -ComputerName $computer `
-            -Filter "DriveType = 3" `
-            -ErrorAction Stop
+if ($isLocalComputer) {
+
+    Write-Host "Using local CIM connection..." -ForegroundColor DarkGray
+
+    # Retrieve local operating system information
+    $os = Get-CimInstance `
+        -ClassName Win32_OperatingSystem `
+        -ErrorAction Stop
+
+    # Retrieve local fixed disks
+    $disks = Get-CimInstance `
+        -ClassName Win32_LogicalDisk `
+        -Filter "DriveType = 3" `
+        -ErrorAction Stop
+}
+else {
+
+    Write-Host "Using remote CIM connection..." -ForegroundColor DarkGray
+
+    # Retrieve remote operating system information
+    $os = Get-CimInstance `
+        -ClassName Win32_OperatingSystem `
+        -ComputerName $computer `
+        -ErrorAction Stop
+
+    # Retrieve remote fixed disks
+    $disks = Get-CimInstance `
+        -ClassName Win32_LogicalDisk `
+        -ComputerName $computer `
+        -Filter "DriveType = 3" `
+        -ErrorAction Stop
+}
 
         # Calculate uptime
         $uptime = (Get-Date) - $os.LastBootUpTime
