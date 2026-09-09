@@ -4,7 +4,7 @@
 
 A PowerShell-based Windows infrastructure assessment tool developed as part of the Microsoft Software & Systems Academy (MSSA) Automating Administration with Windows PowerShell project.
 
-The script automates the collection and evaluation of common Windows system health indicators across one or more computers and produces both an administrator-friendly console summary and a timestamped CSV report.
+The project provides a reusable PowerShell function that automates the collection and evaluation of common Windows system health indicators across one or more computers and produces both an administrator-friendly console summary and a timestamped CSV report.
 
 ## Business Scenario
 
@@ -30,6 +30,14 @@ By default, the following services are monitored:
 
 - Windows Remote Management (`WinRM`)
 - Windows Time (`W32Time`)
+
+## PowerShell Function
+
+The audit is implemented as an advanced PowerShell function:
+
+`Invoke-GracelyndServerAudit`
+
+The function accepts parameters that allow an administrator to specify target computers, health thresholds, and critical Windows services without modifying the underlying script.
 
 ## Health Classification
 
@@ -108,35 +116,57 @@ W32Time
 
 ## Usage
 
-Audit the local computer:
+### Load the Function
+
+Before running the audit, dot-source the PowerShell script to load the function into the current PowerShell session:
 
 ```powershell
-.\Scripts\Gracelynd-ServerAudit.ps1
+. .\Scripts\Gracelynd-ServerAudit.ps1
 ```
 
-Audit multiple computers:
+Verify that the function is available:
 
 ```powershell
-.\Scripts\Gracelynd-ServerAudit.ps1 `
+Get-Command Invoke-GracelyndServerAudit
+```
+
+### Audit the Local Computer
+
+```powershell
+Invoke-GracelyndServerAudit
+```
+
+### Audit Multiple Computers
+
+```powershell
+Invoke-GracelyndServerAudit `
     -ComputerName LON-CL1,LON-DC1,LON-SVR1
 ```
 
-Audit multiple computers while monitoring only Windows Time:
+### Specify Critical Services
+
+By default, the audit monitors WinRM and Windows Time (`W32Time`). Administrators can override the monitored services through the `CriticalServices` parameter.
+
+For example:
 
 ```powershell
-.\Scripts\Gracelynd-ServerAudit.ps1 `
+Invoke-GracelyndServerAudit `
     -ComputerName LON-CL1,LON-DC1,LON-SVR1 `
     -CriticalServices W32Time
 ```
 
-Custom warning thresholds can also be supplied:
+### Customize Health Thresholds
+
+The audit also supports configurable warning thresholds for disk space, memory utilization, and CPU utilization.
+
+Example:
 
 ```powershell
-.\Scripts\Gracelynd-ServerAudit.ps1 `
+Invoke-GracelyndServerAudit `
     -ComputerName LON-CL1,LON-DC1,LON-SVR1 `
-    -CPUWarningThreshold 80 `
+    -DiskWarningThreshold 25 `
     -MemoryWarningThreshold 80 `
-    -DiskWarningThreshold 25
+    -CPUWarningThreshold 80
 ```
 
 ## Console Output
@@ -229,6 +259,24 @@ SCAPowershell/
 `Gracelynd-ServerAudit.ps1` contains the server readiness audit project.
 
 The `Reports` directory is used for generated CSV audit results.
+
+## MSSA Project Requirements Demonstrated
+
+This project demonstrates:
+
+- PowerShell pipelines
+- CIM-based Windows system administration
+- Data filtering and manipulation
+- Readable and color-coded console output
+- Parameterized user input
+- Multi-computer administration
+- Loops and conditional logic
+- Error handling with try/catch
+- Progress and status messages
+- CSV report generation
+- Reusable advanced PowerShell function
+
+The project also demonstrates the bonus challenge of converting the administrative script into a reusable function.
 
 ## Potential Business Application
 
