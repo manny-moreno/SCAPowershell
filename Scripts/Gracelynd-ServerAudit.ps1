@@ -24,18 +24,23 @@ function Invoke-GracelyndServerAudit {
 
 param (
     [Parameter(Mandatory = $false)]
+    [ValidateNotNullOrEmpty()]
     [string[]]$ComputerName = $env:COMPUTERNAME,
-
+    
     [Parameter(Mandatory = $false)]
+    [ValidateRange(0,100)]
     [int]$DiskWarningThreshold = 20,
 
     [Parameter(Mandatory = $false)]
+    [ValidateRange(0,100)]
     [int]$MemoryWarningThreshold = 85,
 
     [Parameter(Mandatory = $false)]
+    [ValidateRange(0,100)]
     [int]$CPUWarningThreshold = 85,
 
     [Parameter(Mandatory = $false)]
+    [ValidateNotNullOrEmpty()]
     [string[]]$CriticalServices = @(
         "WinRM",
         "W32Time"
@@ -142,6 +147,16 @@ else {
         $monitoredServices = $services |
             Where-Object { $_.Name -in $CriticalServices }
 
+        $foundServiceNames = @(
+        $monitoredServices |
+        Select-Object -ExpandProperty Name
+        )
+
+        $missingServices = @(
+        $CriticalServices |
+        Where-Object { $_ -notin $foundServiceNames }
+        )
+
         $stoppedServices = $monitoredServices |
             Where-Object { $_.State -ne "Running" }
 
@@ -151,15 +166,31 @@ else {
                 Where-Object { $_.State -eq "Running" }
         ).Count
 
-        if (@($stoppedServices).Count -gt 0) {
-            $stoppedServiceNames = (
-                $stoppedServices |
-                Select-Object -ExpandProperty Name
-            ) -join ", "
-        }
-        else {
-            $stoppedServiceNames = "None"
-        }
+    $serviceIssues = @()
+
+    if (@($stoppedServices).Count -gt 0) {
+        $serviceIssues += (
+            $stoppedServices |
+            Select-Object -ExpandProperty Name
+        )
+    }
+
+    if (@($missingServices).Count -gt 0) {
+        $serviceIssues += (
+            $missingServices |
+            ForEach-Object { "$_ (Missing)" }
+        )
+    }
+
+    if ($serviceIssues.Count -gt 0) {
+        $stoppedServiceNames = $serviceIssues -join ", "
+    }
+    else {
+        $stoppedServiceNames = "None"
+    }
+
+
+        
 
         foreach ($disk in $disks) {
 
@@ -190,7 +221,8 @@ else {
                 $diskFreePercent -lt $DiskWarningThreshold -or
                 $memoryUsedPercent -gt $MemoryWarningThreshold -or
                 $cpuUsedPercent -gt $CPUWarningThreshold -or
-                @($stoppedServices).Count -gt 0
+                @($stoppedServices).Count -gt 0 -or
+                @($missingServices).Count -gt 0
             ) {
                 $healthStatus = "Warning"
             }
@@ -223,7 +255,7 @@ else {
 
     catch {
 
-        Write-Host "Unable to audit $computer." -ForegroundColor Red
+        Write-Host "Audit failed for $computer." -ForegroundColor Red
         Write-Host $_.Exception.Message -ForegroundColor Red
 
         $results += [PSCustomObject]@{
@@ -243,7 +275,7 @@ else {
             ServicesChecked   = $null
             ServicesRunning   = $null
             StoppedServices   = $null
-            HealthStatus      = "Connection Failed"
+            HealthStatus      = "Audit Failed"
             AuditTime         = Get-Date
         }
     }
@@ -260,8 +292,8 @@ $systemSummary = $results |
         $computerResults = $_.Group
         $firstResult = $computerResults | Select-Object -First 1
         
-        if ($computerResults.HealthStatus -contains "Connection Failed") {
-            $overallStatus = "Connection Failed"
+        if ($computerResults.HealthStatus -contains "Audit Failed") {
+            $overallStatus = "Audit Failed"
         }
         elseif ($computerResults.HealthStatus -contains "Critical") {
             $overallStatus = "Critical"
@@ -297,33 +329,44 @@ $systemSummary = $results |
             DiskFreePercent |
         Format-Table -AutoSize
 
-# Create Reports folder if necessary
-$reportFolder = [System.IO.Path]::GetFullPath(
-    (Join-Path $PSScriptRoot "..\Reports")
-)
+    try {
 
-if (-not (Test-Path $reportFolder)) {
-    New-Item -ItemType Directory -Path $reportFolder | Out-Null
-}
+        # Create Reports folder if necessary
+        $reportFolder = [System.IO.Path]::GetFullPath(
+            (Join-Path $PSScriptRoot "..\Reports")
+        )
 
+        if (-not (Test-Path $reportFolder)) {
+            New-Item `
+                -ItemType Directory `
+                -Path $reportFolder `
+                -ErrorAction Stop |
+                Out-Null
+        }
 
-# Generate timestamped report filename
-$timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
+        # Generate timestamped report filename
+        $timestamp = Get-Date -Format "yyyyMMdd-HHmmssfff"
 
-$reportPath = Join-Path `
-    $reportFolder `
-    "ServerAudit-$timestamp.csv"
+        $reportPath = Join-Path `
+            $reportFolder `
+            "ServerAudit-$timestamp.csv"
 
+        # Export report
+        $results |
+            Export-Csv `
+                -Path $reportPath `
+                -NoTypeInformation `
+                -ErrorAction Stop
 
-# Export report
-$results |
-    Export-Csv `
-        -Path $reportPath `
-        -NoTypeInformation
+        Write-Host ""
+        Write-Host "Audit complete." -ForegroundColor Green
+        Write-Host "Report saved to:" -ForegroundColor Green
+        Write-Host $reportPath
+    }
+    catch {
 
-
-Write-Host ""
-Write-Host "Audit complete." -ForegroundColor Green
-Write-Host "Report saved to:" -ForegroundColor Green
-Write-Host $reportPath
+        Write-Host ""
+        Write-Host "Audit completed, but report export failed." -ForegroundColor Red
+        Write-Host $_.Exception.Message -ForegroundColor Red
+    }
 }
