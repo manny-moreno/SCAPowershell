@@ -26,7 +26,10 @@ param (
 
     [Parameter(Mandatory = $false)]
     [int]$MemoryWarningThreshold = 85
-)
+
+    [Parameter(Mandatory = $false)]
+    [int]$CPUWarningThreshold = 85
+    )
 
 $results = @()
 
@@ -63,6 +66,11 @@ if ($isLocalComputer) {
         -ClassName Win32_LogicalDisk `
         -Filter "DriveType = 3" `
         -ErrorAction Stop
+
+    # Retrieve local processor utilization
+    $processors = Get-CimInstance `
+        -ClassName Win32_Processor `
+        -ErrorAction Stop
 }
 else {
 
@@ -80,6 +88,12 @@ else {
         -ComputerName $computer `
         -Filter "DriveType = 3" `
         -ErrorAction Stop
+
+    # Retrieve remote processor utilization
+    $processors = Get-CimInstance `
+        -ClassName Win32_Processor `
+        -ComputerName $computer `
+        -ErrorAction Stop
 }
 
         # Calculate uptime
@@ -93,6 +107,12 @@ else {
         $memoryUsedPercent = [math]::Round(
             (($os.TotalVisibleMemorySize - $os.FreePhysicalMemory) /
             $os.TotalVisibleMemorySize) * 100,
+            1
+        )
+
+        # Calculate average CPU utilization
+        $cpuUsedPercent = [math]::Round(
+            ($processors | Measure-Object -Property LoadPercentage -Average).Average,
             1
         )
 
@@ -113,7 +133,8 @@ else {
 
             if (
                 $diskFreePercent -lt $DiskWarningThreshold -or
-                $memoryUsedPercent -gt $MemoryWarningThreshold
+                $memoryUsedPercent -gt $MemoryWarningThreshold -or
+                $cpuUsedPercent -gt $CPUWarningThreshold
             ) {
                 $healthStatus = "Warning"
             }
@@ -123,6 +144,10 @@ else {
                 OperatingSystem   = $os.Caption
                 OSVersion         = $os.Version
                 LastBootTime      = $os.LastBootUpTime
+                UptimeDays        = $uptime.Days
+                TotalMemoryGB     = $totalMemoryGB
+                FreeMemoryGB      = $freeMemoryGB
+                CPUUsedPercent    = $cpuUsedPercent
                 UptimeDays        = $uptime.Days
                 TotalMemoryGB     = $totalMemoryGB
                 FreeMemoryGB      = $freeMemoryGB
@@ -157,6 +182,7 @@ else {
             DiskSizeGB        = $null
             DiskFreeGB        = $null
             DiskFreePercent   = $null
+            CPUUsedPercent    = $null
             HealthStatus      = "Connection Failed"
             AuditTime         = Get-Date
         }
@@ -172,6 +198,7 @@ $results |
                   Drive,
                   UptimeDays,
                   MemoryUsedPercent,
+                  CPUUsedPercent,
                   DiskFreePercent,
                   HealthStatus |
     Format-Table -AutoSize
