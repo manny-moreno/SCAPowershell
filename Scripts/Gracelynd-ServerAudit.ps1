@@ -31,6 +31,12 @@ param (
     [int]$CPUWarningThreshold = 85
     )
 
+    [Parameter(Mandatory = $false)]
+    [string[]]$CriticalServices = @(
+        "WinRM",
+        "W32Time"
+    )
+
 $results = @()
 
 Write-Host ""
@@ -71,6 +77,11 @@ if ($isLocalComputer) {
     $processors = Get-CimInstance `
         -ClassName Win32_Processor `
         -ErrorAction Stop
+
+    # Retrieve monitored services
+    $services = Get-CimInstance `
+        -ClassName Win32_Service `
+        -ErrorAction Stop
 }
 else {
 
@@ -92,6 +103,12 @@ else {
     # Retrieve remote processor utilization
     $processors = Get-CimInstance `
         -ClassName Win32_Processor `
+        -ComputerName $computer `
+        -ErrorAction Stop
+
+    #Retrieve monitored services
+    $services = Get-CimInstance `
+        -ClassName Win32_Service `
         -ComputerName $computer `
         -ErrorAction Stop
 }
@@ -116,6 +133,29 @@ else {
             1
         )
 
+        # Evaluate critical services
+        $monitoredServices = $services |
+            Where-Object { $_.Name -in $CriticalServices }
+
+        $stoppedServices = $monitoredServices |
+            Where-Object { $_.State -ne "Running" }
+
+        $servicesChecked = @($monitoredServices).Count
+        $servicesRunning = @(
+                $monitoredServices |
+                Where-Object { $_.State -eq "Running" }
+        ).Count
+
+        if (@($stoppedServices).Count -gt 0) {
+            $stoppedServiceNames = (
+                $stoppedServices |
+                Select-Object -ExpandProperty Name
+            ) -join ", "
+        }
+        else {
+            $stoppedServiceNames = "None"
+        }
+
         foreach ($disk in $disks) {
 
             $diskSizeGB = [math]::Round($disk.Size / 1GB, 2)
@@ -131,10 +171,21 @@ else {
             # Determine system health
             $healthStatus = "Healthy"
 
+            # Critial conditions
             if (
+                $diskFreePercent -lt 10 -or
+                $memoryUsedPercent -ge 95 -or
+                $cpuUsedPercent -ge 95
+            ) {
+                $healthStatus = "Critical"
+            }
+
+            # Warning conditions
+            elseif (
                 $diskFreePercent -lt $DiskWarningThreshold -or
                 $memoryUsedPercent -gt $MemoryWarningThreshold -or
-                $cpuUsedPercent -gt $CPUWarningThreshold
+                $cpuUsedPercent -gt $CPUWarningThreshold -or
+                @($stoppedServices).Count -gt 0
             ) {
                 $healthStatus = "Warning"
             }
@@ -153,8 +204,12 @@ else {
                 DiskSizeGB        = $diskSizeGB
                 DiskFreeGB        = $diskFreeGB
                 DiskFreePercent   = $diskFreePercent
+                ServicesChecked   = $servicesChecked
+                ServicesRunning   = $servicesRunning
+                StoppedServices   = $stoppedServiceNames
                 HealthStatus      = $healthStatus
                 AuditTime         = Get-Date
+                
             }
         }
 
@@ -197,6 +252,7 @@ $results |
                   MemoryUsedPercent,
                   CPUUsedPercent,
                   DiskFreePercent,
+                  StoppedServices,
                   HealthStatus |
     Format-Table -AutoSize
 
