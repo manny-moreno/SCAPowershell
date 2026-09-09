@@ -44,16 +44,26 @@ The function accepts parameters that allow an administrator to specify target co
 Each audited system is classified as:
 
 **Healthy**  
-No monitored condition exceeds the configured warning or critical thresholds.
+No monitored condition exceeds the configured warning or critical thresholds, and all configured critical services are present and running.
 
 **Warning**  
-One or more warning thresholds are exceeded, or a monitored critical service is not running.
+One or more warning thresholds are exceeded, a monitored critical service is stopped, or a configured critical service is missing.
 
 **Critical**  
-One or more critical CPU, memory, or disk conditions are detected.
+One or more fixed critical CPU, memory, or disk conditions are detected.
 
-**Connection Failed**  
-The target computer could not be successfully audited.
+**Audit Failed**  
+The audit could not successfully complete for the target computer.
+
+### Critical Thresholds
+
+The current prototype uses fixed critical thresholds:
+
+- Disk free space below 10%
+- Memory utilization at or above 95%
+- CPU utilization at or above 95%
+
+Warning thresholds remain configurable through function parameters.
 
 ## Local and Remote Auditing
 
@@ -208,6 +218,8 @@ LON-DC1      C:        111.26           88.00
 
 Every successful execution creates a timestamped CSV report in the `Reports` directory.
 
+Report creation and CSV export use error handling so an export failure is reported separately from the computer audit itself.
+
 Example:
 
 ```text
@@ -222,6 +234,7 @@ Generated audit reports are excluded from source control so operational output i
 
 This project demonstrates the use of:
 
+- GitHub Copilot custom agent for PowerShell infrastructure review
 - PowerShell scripting
 - Parameters
 - Variables
@@ -242,10 +255,27 @@ This project demonstrates the use of:
 - Local and remote Windows administration
 - Git and GitHub source control
 
+## AI-Assisted Review
+
+The repository includes a custom workspace agent:
+
+`Gracelynd PowerShell Infrastructure Reviewer`
+
+The agent is designed to review Windows administration PowerShell code, identify defects and regression risks, recommend validation steps, and check repository hygiene while preserving human approval over code changes and operational actions.
+
+During development, the agent was used to perform a static review of the server audit. Its findings informed a controlled improvement pass that added parameter validation, missing-service detection, more accurate audit-failure handling, and safer report export behavior.
+
+The agent definition is stored in:
+
+`.github/agents/gracelynd-powershell-infrastructure-reviewer.agent.md`
+
 ## Project Structure
 
 ```text
 SCAPowershell/
+├── .github/
+│   └── agents/
+│       └── gracelynd-powershell-infrastructure-reviewer.agent.md
 ├── Scripts/
 │   ├── Events.ps1
 │   └── Gracelynd-ServerAudit.ps1
