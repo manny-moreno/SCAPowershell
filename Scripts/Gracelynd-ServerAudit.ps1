@@ -9,8 +9,10 @@
     Checks include:
     - Operating system
     - Uptime
+    - CPU utilization
     - Memory utilization
     - Disk utilization
+    - Critical services status
     - Overall health status
 
 .AUTHOR
@@ -28,14 +30,14 @@ param (
     [int]$MemoryWarningThreshold = 85,
 
     [Parameter(Mandatory = $false)]
-    [int]$CPUWarningThreshold = 85
-    )
+    [int]$CPUWarningThreshold = 85,
 
     [Parameter(Mandatory = $false)]
     [string[]]$CriticalServices = @(
         "WinRM",
         "W32Time"
     )
+)
 
 $results = @()
 
@@ -171,7 +173,7 @@ else {
             # Determine system health
             $healthStatus = "Healthy"
 
-            # Critial conditions
+            # Critical conditions
             if (
                 $diskFreePercent -lt 10 -or
                 $memoryUsedPercent -ge 95 -or
@@ -235,6 +237,9 @@ else {
             DiskFreeGB        = $null
             DiskFreePercent   = $null
             CPUUsedPercent    = $null
+            ServicesChecked   = $null
+            ServicesRunning   = $null
+            StoppedServices   = $null
             HealthStatus      = "Connection Failed"
             AuditTime         = Get-Date
         }
@@ -242,23 +247,57 @@ else {
 }
 
 Write-Host ""
-Write-Host "Audit Results" -ForegroundColor Cyan
-Write-Host "-------------" -ForegroundColor Cyan
+Write-Host "System Summary" -ForegroundColor Cyan
+Write-Host "--------------" -ForegroundColor Cyan
 
-$results |
-    Select-Object ComputerName,
-                  Drive,
-                  UptimeDays,
-                  MemoryUsedPercent,
-                  CPUUsedPercent,
-                  DiskFreePercent,
-                  StoppedServices,
-                  HealthStatus |
-    Format-Table -AutoSize
+$systemSummary = $results |
+    Group-Object ComputerName |
+    ForEach-Object {
 
+        $computerResults = $_.Group
+        $firstResult = $computerResults | Select-Object -First 1
+        
+        if ($computerResults.HealthStatus -contains "Connection Failed") {
+            $overallStatus = "Connection Failed"
+        }
+        elseif ($computerResults.HealthStatus -contains "Critical") {
+            $overallStatus = "Critical"
+        }
+        elseif ($computerResults.HealthStatus -contains "Warning") {
+            $overallStatus = "Warning"
+        }
+        else {
+            $overallStatus = "Healthy"
+        }
+
+        [PSCustomObject]@{
+            Computer = $_.Name
+            Status = $overallStatus
+            CPUPercent = $firstResult.CPUUsedPercent
+            MemoryPercent = $firstResult.MemoryUsedPercent
+            StoppedServices = $firstResult.StoppedServices
+        }
+    }
+
+    $systemSummary |
+        Format-Table -AutoSize
+
+    Write-Host ""
+    Write-Host "DISK SUMMARY" -ForegroundColor Cyan
+    Write-Host "------------" -ForegroundColor Cyan
+
+    $results |
+        Where-Object { $null -ne $_.Drive } |
+        Select-Object ComputerName, 
+            Drive, 
+            DiskFreeGB, 
+            DiskFreePercent |
+        Format-Table -AutoSize
 
 # Create Reports folder if necessary
-$reportFolder = Join-Path $PSScriptRoot "..\Reports"
+$reportFolder = [System.IO.Path]::GetFullPath(
+    (Join-Path $PSScriptRoot "..\Reports")
+)
 
 if (-not (Test-Path $reportFolder)) {
     New-Item -ItemType Directory -Path $reportFolder | Out-Null
