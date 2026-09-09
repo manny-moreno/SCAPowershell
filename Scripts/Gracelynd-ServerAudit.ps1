@@ -19,6 +19,9 @@
     Manny Moreno
 #>
 
+function Invoke-GracelyndServerAudit {
+[CmdletBinding()]
+
 param (
     [Parameter(Mandatory = $false)]
     [string[]]$ComputerName = $env:COMPUTERNAME,
@@ -323,3 +326,4 @@ Write-Host ""
 Write-Host "Audit complete." -ForegroundColor Green
 Write-Host "Report saved to:" -ForegroundColor Green
 Write-Host $reportPath
+}
