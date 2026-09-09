@@ -25,7 +25,7 @@ param (
     [int]$DiskWarningThreshold = 20,
 
     [Parameter(Mandatory = $false)]
-    [int]$MemoryWarningThreshold = 85
+    [int]$MemoryWarningThreshold = 85,
 
     [Parameter(Mandatory = $false)]
     [int]$CPUWarningThreshold = 85
@@ -145,10 +145,7 @@ else {
                 OSVersion         = $os.Version
                 LastBootTime      = $os.LastBootUpTime
                 UptimeDays        = $uptime.Days
-                TotalMemoryGB     = $totalMemoryGB
-                FreeMemoryGB      = $freeMemoryGB
                 CPUUsedPercent    = $cpuUsedPercent
-                UptimeDays        = $uptime.Days
                 TotalMemoryGB     = $totalMemoryGB
                 FreeMemoryGB      = $freeMemoryGB
                 MemoryUsedPercent = $memoryUsedPercent
