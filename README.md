@@ -278,15 +278,16 @@ SCAPowershell/
 ├── .github/
 │   └── agents/
 │       └── gracelynd-powershell-infrastructure-reviewer.agent.md
+├── Coursework/
+│   └── Events.ps1
 ├── Scripts/
-│   ├── Events.ps1
 │   └── Gracelynd-ServerAudit.ps1
 ├── Reports/
 ├── .gitignore
 └── README.md
 ```
 
-`Events.ps1` contains course/lab work.
+The `Coursework` directory contains supporting MSSA PowerShell lab work completed during development of the project.
 
 `Gracelynd-ServerAudit.ps1` contains the server readiness audit project.
 
