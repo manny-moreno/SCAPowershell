@@ -2,15 +2,15 @@
 
 ## Gracelynd Server Readiness Audit
 
-A PowerShell-based Windows infrastructure assessment tool developed as part of the Microsoft Software & Systems Academy (MSSA) Automating Administration with Windows PowerShell project.
+A reusable PowerShell-based Windows infrastructure assessment tool that evaluates system health across one or more computers and produces both an administrator-friendly console summary and a timestamped CSV report.
 
-The project provides a reusable PowerShell function that automates the collection and evaluation of common Windows system health indicators across one or more computers and produces both an administrator-friendly console summary and a timestamped CSV report.
+This project was developed as part of the Microsoft Software & Systems Academy (MSSA) Automating Administration with Windows PowerShell project and is also being evaluated as a prototype for potential application within Gracelynd & Company.
 
 ## Business Scenario
 
 IT administrators frequently need to evaluate the health and readiness of multiple Windows computers. Manually checking each system for processor utilization, memory utilization, available disk space, service status, and other system information can be repetitive and time-consuming.
 
-The Gracelynd Server Readiness Audit demonstrates how PowerShell can automate this process and consolidate the results into a repeatable assessment.
+The Gracelynd Server Readiness Audit automates this process by collecting system information, evaluating predefined health conditions, identifying exceptions, and consolidating the results into a repeatable assessment.
 
 This project also serves as a prototype for a potential Gracelynd & Company infrastructure assessment capability.
 
@@ -190,7 +190,7 @@ Provides one consolidated record per computer showing:
 - Overall health status
 - CPU utilization
 - Memory utilization
-- Stopped monitored services
+- Critical service issues, including stopped or missing services
 
 Example:
 
@@ -223,7 +223,7 @@ Report creation and CSV export use error handling so an export failure is report
 Example:
 
 ```text
-Reports\ServerAudit-20260909-135719.csv
+Reports\ServerAudit-20260909-135719123.csv
 ```
 
 The CSV preserves detailed system and disk information for further analysis, documentation, or future automation.
@@ -234,7 +234,6 @@ Generated audit reports are excluded from source control so operational output i
 
 This project demonstrates the use of:
 
-- GitHub Copilot custom agent for PowerShell infrastructure review
 - PowerShell scripting
 - Parameters
 - Variables
@@ -254,6 +253,7 @@ This project demonstrates the use of:
 - File and path management
 - Local and remote Windows administration
 - Git and GitHub source control
+- GitHub Copilot custom agent for PowerShell infrastructure review
 
 ## AI-Assisted Review
 
@@ -264,6 +264,8 @@ The repository includes a custom workspace agent:
 The agent is designed to review Windows administration PowerShell code, identify defects and regression risks, recommend validation steps, and check repository hygiene while preserving human approval over code changes and operational actions.
 
 During development, the agent was used to perform a static review of the server audit. Its findings informed a controlled improvement pass that added parameter validation, missing-service detection, more accurate audit-failure handling, and safer report export behavior.
+
+The agent served as a review and recommendation layer; code changes and operational decisions remained subject to human evaluation and approval.
 
 The agent definition is stored in:
 
